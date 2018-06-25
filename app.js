@@ -99,6 +99,23 @@ function encode(num){
 
 
 
+  router.get('/links/:hash/clicks', (req,res)=>{
+    Url.findOne({'shortUrl':req.params.hash},(error,url)=>{
+      if (error){
+        res.json({message:error})
+        return
+      }
+      if (url) {
+        response={
+          clicks: url.clicks
+        }
+        res.json(response)
+      }
+      else
+        res.json({message: 'Url not found'})
+    })
+  })  
+
   router.route('/links/:hash')
         .delete((req,res)=>{
           Url.findOne({'shortUrl':req.params.hash},(error, url)=>{
@@ -136,7 +153,7 @@ function encode(num){
               res.json({error: 'Url not found'})
           })
         })
-  
+        
 
   app.use('/api', router)
 
