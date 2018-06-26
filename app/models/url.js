@@ -19,5 +19,6 @@ var urlSchema = new schema({
 	timeStamp: Date,
 	clicks: Number,
 	lastAccess: Date
-})
+},
+{versionKey: false})
 module.exports = mongoose.model('url',urlSchema)
