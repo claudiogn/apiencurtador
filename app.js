@@ -16,7 +16,7 @@ var alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
 var base = alphabet.length;
 
 
-mongoose.connect('mongodb://localhost/test')
+mongoose.connect('mongodb://localhost/dblinks')
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function() {
@@ -45,8 +45,11 @@ function encode(num){
     id=id+2
     url.shortUrl = encoded
     id=id+2
-
-    url.description = ''
+    if (req.body.description) {
+      url.description = req.body.description
+    }else{
+      url.description = ''
+    }
     url.active=true
     url.clicks=0
     url.timeStamp = new Date
@@ -56,7 +59,7 @@ function encode(num){
       if (error) {
         res.send('Erro: '+error)
       }
-      res.json({message: 'URL encurtada'})
+      res.json(url)
     })
   })
 
@@ -66,7 +69,6 @@ function encode(num){
         if (error)
           res.json({message:error})
         if(url){
-          url.clicks= url.clicks+1
           url.save((error)=>{
             if (error)
               res.send(error)
@@ -89,11 +91,24 @@ function encode(num){
     Url.find((error,urls)=>{
         if (error)
           res.send("Erro ao listar: "+error)
-        res.json(urls)
+        else{
+          res.json(urls)
+        }
     }) 
   })
-  router.get('/links', (req,res)=>{
+  router.get('/links', (req,res)=>{ 
+      Url.find({'active': true})
+          .limit(parseFloat(req.query.size))
+          .exec((error,urls)=>{
+            if (error) {
+              res.json({error:error})
+            }
+            else{
+              res.json(urls)
+            }
+          })
     
+
   })
 
 
@@ -125,7 +140,7 @@ function encode(num){
             url.save((error)=>{
               if (error) 
                 res.send(error)
-              res.json({message:"Url deleted"})
+              res.json(url)
             })
           })
         })
@@ -138,7 +153,7 @@ function encode(num){
             url.save ((error)=>{
               if (error) 
                 res.send(error)
-              res.json({message:'Url updated'})
+              res.json(url)
             })
           })
         })
