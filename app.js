@@ -85,19 +85,33 @@ function encode(num){
 
 
   router.get('/links',(req,res,next)=>{
-    if (Object.keys(req.query).length) next('route')
-    next()
+    if (Object.keys(req.query).length){
+            next('route')
+
+          } else{
+                next()
+          }
+
+
   }, (req,res,next)=>{
     Url.find((error,urls)=>{
         if (error)
           res.send("Erro ao listar: "+error)
-        else{
+        else
           res.json(urls)
-        }
     }) 
   })
-  router.get('/links', (req,res)=>{ 
-      Url.find({'active': true})
+  router.get('/links', (req,res)=>{
+
+    // Url.find((error,url)=>{
+    //   res.json(url)
+    // })
+    if (req.query.state && req.query.size) {
+      if (req.query.state=='open')
+        state=true
+      else 
+        state=false
+      Url.find({'active': state})
           .limit(parseFloat(req.query.size))
           .exec((error,urls)=>{
             if (error) {
@@ -107,7 +121,12 @@ function encode(num){
               res.json(urls)
             }
           })
-    
+    }else{
+      res.json({error: 'Bad request'})
+    }
+    // else{
+    //   Url.find({'active':false})
+    // }
 
   })
 
@@ -171,6 +190,18 @@ function encode(num){
         
 
   app.use('/api', router)
+
+  app.get('/:hash', (req,res)=>{
+    Url.findOne({'shortUrl': req.params.hash}, (error,url)=>{
+      if (error) {
+        res.json(error)
+      }else{
+        link = url.longUrl
+        console.log(link)
+        res.redirect(link)
+      }
+    })
+  })
 
 
 app.listen(3000, function(){
