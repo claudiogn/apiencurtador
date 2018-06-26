@@ -217,6 +217,6 @@ function encode(num){
   })
 
 
-app.listen(3000, function(){
+app.listen(80, function(){
 	console.log('Servidor on')
 });
