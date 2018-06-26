@@ -37,30 +37,37 @@ function encode(num){
 
 
   router.post('/shorten',(req, res)=>{
-    var url = new Url()
+    
+    Url.findOne({'longUrl': req.body.longUrl}, (error,url)=>{
+      if (url) {
+        res.json(url)
+      }else{
+        var new_url = new Url()
+        new_url.longUrl=req.body.longUrl
 
-    url.longUrl=req.body.longUrl
-
-    encoded  = encode(id)
-    id=id+2
-    url.shortUrl = encoded
-    id=id+2
-    if (req.body.description) {
-      url.description = req.body.description
-    }else{
-      url.description = ''
-    }
-    url.active=true
-    url.clicks=0
-    url.timeStamp = new Date
-    url.lastAccess = new Date
-
-    url.save(function(error){
-      if (error) {
-        res.send('Erro: '+error)
+        encoded  = encode(id)
+        id=id+2
+        new_url.shortUrl = encoded
+        id=id+2
+      if (req.body.description) {
+        new_url.description = req.body.description
+      }else{
+        new_url.description = ''
       }
-      res.json(url)
-    })
+      new_url.active=true
+      new_url.clicks=0
+      new_url.timeStamp = new Date
+      new_url.lastAccess = new Date
+
+      new_url.save(function(error){
+        if (error) {
+          res.send('Erro: '+error)
+        }
+        res.json(new_url)
+      })
+        }
+      })
+
   })
 
 
@@ -94,7 +101,7 @@ function encode(num){
 
 
   }, (req,res,next)=>{
-    Url.find((error,urls)=>{
+    Url.find({'active':true},(error,urls)=>{
         if (error)
           res.send("Erro ao listar: "+error)
         else
@@ -196,6 +203,12 @@ function encode(num){
       if (error) {
         res.json(error)
       }else{
+        url.clicks = url.clicks+1
+        url.save((error)=>{
+          if (error) {
+            res.json(error)
+          }
+        })
         link = url.longUrl
         console.log(link)
         res.redirect(link)
