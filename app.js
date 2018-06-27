@@ -12,8 +12,7 @@ app.use(bodyParser.json())
 var router = express.Router()
 
 var id = 10000  
-var alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
-var base = alphabet.length;
+
 
 
 mongoose.connect('mongodb://localhost/dblinks')
@@ -36,184 +35,289 @@ function encode(num){
 
 
 
-  router.post('/shorten',(req, res)=>{
-    
-    Url.findOne({'longUrl': req.body.longUrl}, (error,url)=>{
-      if (url) {
-        res.json(url)
-      }else{
-        var new_url = new Url()
-        new_url.longUrl=req.body.longUrl
+    router.post('/shorten',(req, res)=>{
+        if (req.body.longUrl) { 
+            try{
 
-        encoded  = encode(id)
-        id=id+2
-        new_url.shortUrl = encoded
-        id=id+2
-      if (req.body.description) {
-        new_url.description = req.body.description
-      }else{
-        new_url.description = ''
-      }
-      new_url.active=true
-      new_url.clicks=0
-      new_url.timeStamp = new Date
-      new_url.lastAccess = new Date
+                Url.findOne({'longUrl': req.body.longUrl}, (error,url)=>{
+                    if (url) {
+                        res.json(url)
+                    }else{
+                        var new_url = new Url()
+                        new_url.longUrl=req.body.longUrl
 
-      new_url.save(function(error){
-        if (error) {
-          res.send('Erro: '+error)
+                        new_url.shortUrl = ''
+
+                        if (req.body.description) {
+                            new_url.description = req.body.description
+                        }else{
+                            new_url.description = ''
+                        }
+                        new_url.active=true
+                        new_url.clicks=0
+                        new_url.timeStamp = new Date
+                        new_url.lastAccess = new Date
+
+                        new_url.save(function(error){
+                        if (error) {
+                            res.json({error: error})
+                        }
+                        res.json(new_url)
+                        })
+                    }
+              })
+            }catch(err){
+                res.json({error: 'Unable to shorten'})
+            }
+        }else{
+            res.json({error: 'Bad request'})
         }
-        res.json(new_url)
-      })
-        }
-      })
-
-  })
+    })
 
 
     router.post('/expand', (req,res)=>{
-      Url.findOne({'shortUrl':req.body.shortUrl},(error,url)=>{
-        if (error)
-          res.json({message:error})
-        if(url){
-          url.save((error)=>{
-            if (error)
-              res.send(error)
-            res.json({
-              shortUrl:url.shortUrl,
-              longUrl:url.longUrl
-            })
-          })}
-          else{
-            res.json({message:'Link not found'})
-          }
-      })
-    })
-
-
-  router.get('/links',(req,res,next)=>{
-    if (Object.keys(req.query).length){
-            next('route')
-
-          } else{
-                next()
-          }
-
-
-  }, (req,res,next)=>{
-    Url.find({'active':true},(error,urls)=>{
-        if (error)
-          res.send("Erro ao listar: "+error)
-        else
-          res.json(urls)
-    }) 
-  })
-  router.get('/links', (req,res)=>{
-
-    // Url.find((error,url)=>{
-    //   res.json(url)
-    // })
-    if (req.query.state && req.query.size) {
-      if (req.query.state=='open')
-        state=true
-      else 
-        state=false
-      Url.find({'active': state})
-          .limit(parseFloat(req.query.size))
-          .exec((error,urls)=>{
-            if (error) {
-              res.json({error:error})
-            }
-            else{
-              res.json(urls)
-            }
-          })
-    }else{
-      res.json({error: 'Bad request'})
-    }
-    // else{
-    //   Url.find({'active':false})
-    // }
-
-  })
-
-
-
-
-  router.get('/links/:hash/clicks', (req,res)=>{
-    Url.findOne({'shortUrl':req.params.hash},(error,url)=>{
-      if (error){
-        res.json({message:error})
-        return
-      }
-      if (url) {
-        response={
-          clicks: url.clicks
+        try{    
+            if (req.body.shortUrl) {
+                Url.findOne({'shortUrl':req.body.shortUrl},(error,url)=>{
+                    if (error)
+                      res.json({message:error})
+                    if(url){
+                        if (url.active==false) {
+                            res.json({message:'Link not found'})
+                        }else{
+                            url.save((error)=>{
+                                if (error)
+                                 res.json({error:'Bad request'})
+                                res.json({
+                                    shortUrl:url.shortUrl,
+                                    longUrl:url.longUrl
+                                })
+                            })
+                        }
+                    }else{
+                        res.json({message:'Link not found'})
+                    }
+                })
+            }else{
+                res.json({error: 'Bad request'})
+            }    
+        }catch(error){
+            res.json({error:'Bad request'})
         }
-        res.json(response)
-      }
-      else
-        res.json({message: 'Url not found'})
     })
-  })  
+
+
+    router.get('/links',(req,res,next)=>{
+        if (Object.keys(req.query).length){
+                next('route')
+
+            }else{
+                next()
+            }
+
+
+        }, (req,res,next)=>{
+        Url.find({'active':true},(error,urls)=>{
+            if (error)
+                res.json({error: error})
+            if(urls)
+                res.json(urls)
+            else
+                res.json({message: 'No shorten URLs'})
+        }) 
+    })
+
+
+    router.get('/links', (req,res)=>{
+        if (req.query.state && req.query.size) {
+            state=true
+            try{
+                Url.find({'active': state})
+                    .limit(parseFloat(req.query.size))
+                    .sort({'timeStamp': -1})
+                    .exec((error,urls)=>{
+                        if (error) {
+                            res.json({error:error})
+                        }else{
+                            res.json(urls)
+                        }
+                })
+            }catch(error){
+                res.json({error: 'Bad request'})
+            }     
+        }else{
+            res.json({error: 'Bad request'})
+        }
+    })
+
+
+    router.get('/links/find',(req,res)=>{
+        try{
+            if (req.query.url) {
+                Url.findOne({'longUrl': req.query.url}, (error,url)=>{
+                    if(error)
+                        res.json(error)
+                    else if (url) {
+                        if (url.active==false) {
+                            res.json({message: 'URL not found'})
+                        }else{
+                            obj = {longUrl:url.longUrl,
+                                shortUrl:url.shortUrl}
+                            res.json(obj)
+                        }
+                    }else{
+                        res.json({error:'URL not found'})
+                    }
+                    
+                })
+            }else if (req.query.link) {
+                Url.findOne({'shortUrl': req.query.link}, (error,url)=>{
+                    if(error)
+                        res.json(error)
+                    else if (url) {
+                        if (url.active==false) {
+                            res.json({message: 'URL not found'})
+                        }else{
+                            obj = {longUrl:url.longUrl,
+                                shortUrl:url.shortUrl}
+                            res.json(obj)
+                        }
+                    }else{
+                        res.json({error:'URL not found'})
+                    }
+                    
+                })
+            }else{
+                res.json({error:'Bad request'})
+            }
+        }catch(error){
+            res.json({error: 'Bad request'})
+        }
+    })
+
+
+
+
+
+    router.get('/links/:hash/clicks', (req,res)=>{
+        if (req.params.hash){
+            Url.findOne({'shortUrl':req.params.hash},(error,url)=>{
+                if (error){
+                    res.json({message:error})
+                }
+                else if (url) {
+                    if (url.active==false) {
+                        res.json({message: 'URL not found'})
+                    }else{ 
+                        response={
+                            clicks: url.clicks
+                        }
+                        res.json(response)
+                    }
+                }else
+                    res.json({message: 'Url not found'})
+            })
+        }else{
+            res.json({error: 'Bad request'})
+        }
+    })  
 
   router.route('/links/:hash')
         .delete((req,res)=>{
-          Url.findOne({'shortUrl':req.params.hash},(error, url)=>{
-            if (error)
-              res.send('Error' + error)
-            url.active=false
-            url.save((error)=>{
-              if (error) 
-                res.send(error)
-              res.json(url)
-            })
-          })
+            if (req.params.hash) {
+                Url.findOne({'shortUrl':req.params.hash},(error, url)=>{
+                    if (error)
+                        res.send('Error' + error)
+                    if (url) {       
+                        url.active=false
+                        url.save((error)=>{
+                            if (error) 
+                                res.send(error)
+                            res.json(url)
+                        })
+                    }else{
+                        res.json({message: 'URL not found'})
+                    }
+                })
+            }else{
+                res.json({error: 'Bad request'})
+            }
         })
 
         .patch((req,res)=>{
-          Url.findOne({'shortUrl':req.params.hash},(error,url)=>{
-            if (error)
-              res.send(error)
-            url.description = req.body.description
-            url.save ((error)=>{
-              if (error) 
-                res.send(error)
-              res.json(url)
-            })
-          })
+            if (req.params.hash && req.body.description ) {
+                Url.findOne({'shortUrl':req.params.hash},(error,url)=>{
+                    if (error)
+                        res.send(error)
+                    else if (url) {
+                        if (url.active==true) {
+                            url.description = req.body.description
+                            url.save ((error)=>{
+                                if (error) 
+                                    res.send(error)
+                                res.json(url)
+                            })
+                        }else{
+                            res.json({message: 'URL not found'})
+                        }
+                    }else{
+                        res.json({message: 'URL not found'})
+                    }
+                })
+            }else{
+                res.json({message:'Bad request'})
+            }
         })
 
         .get((req,res)=>{
-          Url.findOne({'shortUrl': req.params.hash}, (error,url)=>{
-            if (error)
-              res.json({error: error})
-            if (url)
-              res.json(url)
-            else
-              res.json({error: 'Url not found'})
-          })
+            if (req.params.hash) {  
+                Url.findOne({'shortUrl': req.params.hash}, (error,url)=>{
+                    if (error)
+                        res.json({error: error})
+                    else if (url){
+                        if (url.active==true) {
+                            res.json(url)    
+                        }else{
+                            res.json({message: 'URL not found'})
+                        }
+                    }else{
+                        res.json({message: 'URL not found'})
+                    }
+                })
+            }else{
+                res.json({error:'Bad request'})
+            }
         })
         
 
   app.use('/api', router)
 
   app.get('/:hash', (req,res)=>{
-    Url.findOne({'shortUrl': req.params.hash}, (error,url)=>{
-      if (error) {
-        res.json(error)
-      }else{
-        url.clicks = url.clicks+1
-        url.save((error)=>{
-          if (error) {
-            res.json(error)
+    if (req.params.hash) {
+        Url.findOne({'shortUrl': req.params.hash}, (error,url)=>{
+            if (error) {
+                res.json(error)
+            }else if(url){
+                if (url.active==true) {
+                    url.clicks = url.clicks+1
+                    url.save((error)=>{
+                        if (error) {
+                            res.json(error)
+                        }
+                    })
+                    link = url.longUrl
+                    console.log(link)
+                    res.redirect(link)
+                }else{
+                    res.json({message: 'URL not found'})
+                }
+          }else{
+            res.json({message: 'URL not found'})
           }
         })
-        link = url.longUrl
-        console.log(link)
-        res.redirect(link)
-      }
-    })
+    }else{
+        res.json({error:'Bad request'})
+    }
   })
 
 
