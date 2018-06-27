@@ -300,7 +300,7 @@ function encode(num){
             }else if(url){
                 if (url.active==true) {
                     url.clicks = url.clicks+1
-                    url.lastAccess= Date.now
+                    url.lastAccess= new Date
                     url.save((error)=>{
                         if (error) {
                             res.json(error)
